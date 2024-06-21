@@ -1,37 +1,36 @@
-#include <string.h>
-#include <stdbool.h>
 #include <assert.h>
 #include "str.h"
 
-bool xisspace(u8 c)
+bool isspacec(char c)
 {
-    return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+    return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f'
+        || c == '\r';
 }
 
-bool xisdigit(u8 c)
+bool isdigitc(char c)
 {
     return c >= '0' && c <= '9';
 }
 
-bool xisprint(u8 c)
+bool isprintc(char c)
 {
     return c >= ' ' && c <= '~';
 }
 
-static bool cmp(u8 *data1, u8 *data2, size len)
+bool strequals(struct str s1, struct str s2)
 {
-    for (size i = 0; i < len; i++)
-    {
-        if (data1[i] != data2[i])
-        {
-            return false;
-        }
-    }
-    return true;
+    return s1.len == s2.len
+        && (!s1.len || !memcmp(s1.data, s2.data, (usize) s1.len));
 }
-bool s8cmp(struct s8 s1, struct s8 s2)
+
+u64 strhash(struct str s)
 {
-    assert(s1.len >= 0 && s2.len >= 0);
+    u64 h = 0x100;
     
-    return s1.len == s2.len && cmp(s1.data, s2.data, s1.len);
+    for (int i = 0; i < s.len; i++)
+    {
+        h ^= (u8) s.data[i];
+        h *= 1111111111111111111u;
+    }
+    return h;
 }

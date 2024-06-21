@@ -1,4 +1,3 @@
-#include <string.h>
 #include <limits.h>
 #include "toker.h"
 
@@ -11,7 +10,7 @@ static bool symbol_set[] = {
     [','] = true
 };
 
-static bool next_char(struct toker *toker, u8 *c)
+static bool next_char(struct toker *toker, char *c)
 {
     if (toker->pos < toker->str.len)
     {
@@ -25,7 +24,7 @@ static bool next_char(struct toker *toker, u8 *c)
     return false;
 }
 
-static bool peek_char(struct toker *toker, u8 *c)
+static bool peek_char(struct toker *toker, char *c)
 {
     if (toker->pos < toker->str.len)
     {
@@ -35,210 +34,202 @@ static bool peek_char(struct toker *toker, u8 *c)
     return false;
 }
 
-const char *type_to_str(enum tok_type type)
-{
-    switch (type)
-    {
-    case T_ERR:
-    {
-        return "error";
-    }
-    case T_SYM:
-    {
-        return "sym";
-    }
-    case T_INT:
-    {
-        return "int";
-    }
-    case T_STR:
-    {
-        return "str";
-    }
-    default:
-    {
-        return "unkown";
-    }
-    }
-}
-
-void init_toker(struct toker *toker, struct s8 str)
+void init_toker(struct toker *toker, struct str str)
 {
     memset(toker, 0, sizeof *toker);
     toker->str = str;
-    toker->state = S_WS;
+    toker->state = TOK_STATE_WS;
     toker->line_num = 1;
 }
 
 bool has_next_tok(struct toker *toker)
 {
-    u8 prevc = '\0';
-    u8 c;
-    
-    while (toker->state != S_TOK && next_char(toker, &c))
+    char prevc = '\0';
+    char c;
+
+    if (toker->state == TOK_STATE_ERR)
+    {
+        return false;
+    }
+    while (toker->state != TOK_STATE_TOK && next_char(toker, &c))
     {
         switch (toker->state)
         {
-        case S_WS:
+        case TOK_STATE_WS:
         {
-            if (!xisspace(c))
+            if (!isspacec(c))
             {
                 if (c == '/')
                 {
-                    toker->state = S_MCMNT;
+                    toker->state = TOK_STATE_MCMNT;
                 }
                 else
                 {
                     toker->pos--;
-                    toker->state = S_TOK;
+                    toker->state = TOK_STATE_TOK;
                 }
             }
             break;
         }
-        case S_MCMNT:
+        case TOK_STATE_MCMNT:
         {
             if (c == '/')
             {
-                toker->state = S_SLCMNT;
+                toker->state = TOK_STATE_SLCMNT;
             }
             else if (c == '*')
             {
-                toker->state = S_MLCMNT;
+                toker->state = TOK_STATE_MLCMNT;
             }
             else
             {
                 toker->pos -= 2;
-                toker->state = S_TOK;
+                toker->state = TOK_STATE_TOK;
             }
             break;
         }
-        case S_SLCMNT:
+        case TOK_STATE_SLCMNT:
         {
             if (c == '\n')
             {
-                toker->state = S_WS;
+                toker->state = TOK_STATE_WS;
             }
             break;
         }
-        case S_MLCMNT:
+        case TOK_STATE_MLCMNT:
         {
             if (prevc == '*' && c == '/')
             {
-                toker->state = S_WS;
+                toker->state = TOK_STATE_WS;
             }
             break;
         }
         default:
         {
             break;
+        
+
         }
         }
         prevc = c;
     }
-    return toker->state == S_TOK;
+    return toker->state == TOK_STATE_TOK;
 }
 
-struct tok next_tok(struct toker *toker)
+struct bson_res next_tok(struct toker *toker, struct tok *tok)
 {
     bool is_neg = false;
     i64 int_val = 0;
-    struct tok tok = { .type = T_ERR };
-    u8 c = 0;
+    char c = '\0';
+    struct bson_res res = { BRC_BADSTATE, 0 };
 
-    if (toker->state != S_TOK)
+    if (toker->state != TOK_STATE_TOK)
     {
-        tok.line_num = toker->line_num;
-        tok.int_val = E_STATE;
-        return tok;
+        res.line_num = toker->line_num;
+        return res;
     }
 
+    memset(tok, 0, sizeof *tok);
     // State is TOK, there's at least one more character left
     next_char(toker, &c);
-    tok.line_num = toker->line_num;
+    res.line_num = toker->line_num;
 
-    if (symbol_set[c])
+    if (!isprintc(c))
     {
-        tok.type = T_SYM;
-        tok.str_val.data = toker->str.data + toker->pos - 1;
-        tok.str_val.len = 1;
-        toker->state = S_WS;
+        toker->state = TOK_STATE_ERR;
+        res.rc = BRC_UNEXCHAR;
+        return res;
     }
-    else if (c == '-' || xisdigit(c))
+
+    if (symbol_set[(int) c])
+    {
+        tok->type = TOK_TYPE_SYM;
+        tok->str_val.data = toker->str.data + toker->pos - 1;
+        tok->str_val.len = 1;
+        toker->state = TOK_STATE_WS;
+    }
+    else if (c == '-' || isdigitc(c))
     {
         if (c == '-')
         {
             is_neg = true;
-            if (!peek_char(toker, &c) || !xisdigit(c))
+            if (!peek_char(toker, &c) || !isdigitc(c))
             {
-                tok.int_val = E_UNEXCHAR;
-                toker->state = S_WS;
-                return tok;
+                toker->state = TOK_STATE_ERR;
+                res.rc = BRC_UNEXCHAR;
+                return res;
             }
             next_char(toker, &c);
         }
-        tok.type = T_INT;
+        tok->type = TOK_TYPE_INT;
         int_val = c - '0';
-        toker->state = S_INT;
+        toker->state = TOK_STATE_INT;
     }
     else if (c == '"')
     {
-        tok.type = T_STR;
-        tok.str_val.data = toker->str.data + toker->pos;
-        toker->state = S_STR;
+        tok->type = TOK_TYPE_STR;
+        tok->str_val.data = toker->str.data + toker->pos;
+        toker->state = TOK_STATE_STR;
     }
     else
     {
-        tok.int_val = E_UNEXCHAR;
-        toker->state = S_WS;
-        return tok;
+        toker->state = TOK_STATE_ERR;
+        res.rc = BRC_UNEXCHAR;
+        return res;
     }
 
-    while (toker->state != S_WS)
+    while (toker->state != TOK_STATE_WS)
     {
         switch (toker->state)
         {
-        case S_INT:
+        case TOK_STATE_INT:
         {
-            if (next_char(toker, &c) && xisdigit(c))
+            if (peek_char(toker, &c) && isdigitc(c))
             {
+                next_char(toker, &c);
                 int_val *= 10;
                 int_val += c - '0';
 
                 if (int_val > (i64) INT_MAX + 1
                     || (!is_neg && int_val > INT_MAX))
                 {
-                    tok.type = T_ERR;
-                    tok.int_val = E_TOOLARGE;
-                    tok.line_num = toker->line_num;
-                    toker->state = S_WS;
+                    toker->state = TOK_STATE_ERR;
+                    res.rc = BRC_OUTRANGE;
+                    res.line_num = toker->line_num;
+                    return res;
                 }
             }
             else
             {
-                toker->pos--;
-                tok.int_val = (int) (is_neg ? -int_val : int_val);
-                tok.line_num = toker->line_num;
-                toker->state = S_WS;
+                tok->int_val = (int) (is_neg ? -int_val : int_val);
+                toker->state = TOK_STATE_WS;                    
+
             }
             break;
         }
-        case S_STR:
+        case TOK_STATE_STR:
         {
             if (!next_char(toker, &c))
             {
-                tok.type = T_ERR;
-                tok.int_val = E_UNTERM;
-                tok.line_num = toker->line_num;
-                toker->state = S_WS;
+                toker->state = TOK_STATE_ERR;
+                res.rc = BRC_UNTERM;
+                res.line_num = toker->line_num;
+                return res;
             }
             if (c == '"')
             {
-                tok.line_num = toker->line_num;
-                toker->state = S_WS;
+                toker->state = TOK_STATE_WS;
+            }
+            else if (isprintc(c))
+            {
+                tok->str_val.len++;
             }
             else
             {
-                tok.str_val.len++;
+                toker->state = TOK_STATE_ERR;
+                res.rc = BRC_UNEXCHAR;
+                res.line_num = toker->line_num;
+                return res;
             }
             break;
         }
@@ -248,5 +239,8 @@ struct tok next_tok(struct toker *toker)
         }
         }
     }
-    return tok;
+    
+    res.rc = BRC_SUCCESS;
+    res.line_num = toker->line_num;
+    return res;
 }

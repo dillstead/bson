@@ -6,18 +6,19 @@
 #include <sys/mman.h>
 #include "arena.h"
 
-// 1 GB 
-#define CAPACITY (1 << 30)
-
-bool new_arena(struct arena *arena)
+bool new_arena(struct arena *arena, int sz)
 {
-    arena->beg = mmap(NULL, CAPACITY, PROT_READ | PROT_WRITE,
+    if (sz <= 0)
+    {
+        return false;
+    }
+    arena->beg = mmap(NULL, (usize) sz, PROT_READ | PROT_WRITE,
                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (arena->beg == MAP_FAILED)
     {
         return false;
     }
-    arena->end = arena->beg + CAPACITY;
+    arena->end = arena->beg + sz;
     return true;
 }
 

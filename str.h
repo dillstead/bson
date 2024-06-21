@@ -1,22 +1,18 @@
 #ifndef STR_H
 #define STR_H
 
-#include <stdbool.h>
+#include <string.h>
 #include "types.h"
-#include "arena.h"
+#include "bson.h"
 
-#define s8(s) (struct s8){(u8 *) s, lengthof(s)}
+#define str(s) (struct str) {(char *) s, (int) lengthof(s)}
 
-struct s8
-{
-    u8  *data;
-    size len;
-};
-
-bool xisspace(u8 c);
-bool xisdigit(u8 c);
-bool xisprint(u8 c);
-bool s8cmp(struct s8 s1, struct s8 s2);
+bool isspacec(char c);
+bool isdigitc(char c);
+bool isprintc(char c);
+bool strequals(struct str s1, struct str s2);
+bool strisempty(struct str s);
+u64 strhash(struct str s);
 
 #endif
 
