@@ -18,6 +18,7 @@ enum brc
     BRC_NOMEM,
     BRC_OUTRANGE,
     BRC_UNTERM,
+    BRC_BADESC,
     BRC_UNEXCHAR
 };
 

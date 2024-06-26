@@ -1,13 +1,19 @@
 #include <limits.h>
 #include "toker.h"
 
-static bool symbol_set[] = {
+static bool symbol_set[128] = {
     ['{'] = true,
     ['}'] = true,
     ['['] = true,
     [']'] = true,
     [':'] = true,
     [','] = true
+};
+
+static char escape_set[128] = {
+    ['\\'] = '\\',
+    ['n'] = '\n',
+    ['"'] = '"'
 };
 
 static bool next_char(struct toker *toker, char *c)
@@ -107,8 +113,6 @@ bool has_next_tok(struct toker *toker)
         default:
         {
             break;
-        
-
         }
         }
         prevc = c;
@@ -121,6 +125,8 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     bool is_neg = false;
     i64 int_val = 0;
     char c = '\0';
+    bool is_escape = false;
+    size str_pos;
     struct bson_res res = { BRC_BADSTATE, 0 };
 
     if (toker->state != TOK_STATE_TOK)
@@ -167,6 +173,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     }
     else if (c == '"')
     {
+        str_pos = 0;
         tok->type = TOK_TYPE_STR;
         tok->str_val.data = toker->str.data + toker->pos;
         toker->state = TOK_STATE_STR;
@@ -209,6 +216,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
         }
         case TOK_STATE_STR:
         {
+        start_string: __attribute((unused))
             if (!next_char(toker, &c))
             {
                 toker->state = TOK_STATE_ERR;
@@ -216,12 +224,31 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
                 res.line_num = toker->line_num;
                 return res;
             }
-            if (c == '"')
+            if (is_escape)
+            {
+                char esc = escape_set[(int) c];
+                if (!esc)
+                {
+                    toker->state = TOK_STATE_ERR;
+                    res.rc = BRC_BADESC;
+                    res.line_num = toker->line_num;
+                    return res;
+                }
+                tok->str_val.data[str_pos++] = esc;
+                tok->str_val.len++;
+                is_escape = false;
+            }
+            else if (c == '\\')
+            {
+                is_escape = true;
+            }
+            else if (c == '"')
             {
                 toker->state = TOK_STATE_WS;
             }
             else if (isprintc(c))
             {
+                tok->str_val.data[str_pos++] = c;
                 tok->str_val.len++;
             }
             else
