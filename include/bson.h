@@ -43,6 +43,7 @@ struct bson_res
 {
     int rc;
     int line_num;
+    int col_num;
 };
 
 bool new_arena(struct arena *arena, int sz);

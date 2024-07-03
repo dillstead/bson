@@ -36,6 +36,8 @@ struct toker
     enum tok_state state;
     size pos;
     int line_num;
+    int next_col_num;
+    int col_num;
     struct str str;
 };
 

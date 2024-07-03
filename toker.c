@@ -20,10 +20,16 @@ static bool next_char(struct toker *toker, char *c)
 {
     if (toker->pos < toker->str.len)
     {
+        toker->col_num = toker->next_col_num;
         *c = toker->str.data[toker->pos++];
         if (*c == '\n')
         {
             toker->line_num++;
+            toker->next_col_num = 1;
+        }
+        else
+        {
+            toker->next_col_num++;
         }
         return true;
     }
@@ -46,6 +52,8 @@ void init_toker(struct toker *toker, struct str str)
     toker->str = str;
     toker->state = TOK_STATE_WS;
     toker->line_num = 1;
+    toker->col_num = 1;
+    toker->next_col_num = 1;
 }
 
 bool has_next_tok(struct toker *toker)
@@ -72,6 +80,7 @@ bool has_next_tok(struct toker *toker)
                 else
                 {
                     toker->pos--;
+                    toker->next_col_num--;
                     toker->state = TOK_STATE_TOK;
                 }
             }
@@ -89,6 +98,15 @@ bool has_next_tok(struct toker *toker)
             }
             else
             {
+                if (c == '\n')
+                {
+                    toker->line_num--;
+                    toker->next_col_num = toker->col_num - 1;
+                }
+                else
+                {
+                    toker->next_col_num -= 2;
+                }
                 toker->pos -= 2;
                 toker->state = TOK_STATE_TOK;
             }
@@ -126,12 +144,14 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     i64 int_val = 0;
     char c = '\0';
     bool is_escape = false;
+    int start;
     size str_pos;
-    struct bson_res res = { BRC_BADSTATE, 0 };
+    struct bson_res res = { BRC_BADSTATE, 0, 0 };
 
     if (toker->state != TOK_STATE_TOK)
     {
         res.line_num = toker->line_num;
+        res.col_num = toker->col_num;
         return res;
     }
 
@@ -139,6 +159,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     // State is TOK, there's at least one more character left
     next_char(toker, &c);
     res.line_num = toker->line_num;
+    res.col_num = toker->col_num;
 
     if (!isprintc(c))
     {
@@ -156,6 +177,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     }
     else if (c == '-' || isdigitc(c))
     {
+        start = toker->col_num;
         if (c == '-')
         {
             is_neg = true;
@@ -173,6 +195,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     }
     else if (c == '"')
     {
+        start = toker->col_num;
         str_pos = 0;
         tok->type = TOK_TYPE_STR;
         tok->str_val.data = toker->str.data + toker->pos;
@@ -202,26 +225,25 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
                 {
                     toker->state = TOK_STATE_ERR;
                     res.rc = BRC_OUTRANGE;
-                    res.line_num = toker->line_num;
+                    res.col_num = start;
                     return res;
                 }
             }
             else
             {
                 tok->int_val = (int) (is_neg ? -int_val : int_val);
-                toker->state = TOK_STATE_WS;                    
-
+                toker->state = TOK_STATE_WS;
+                res.col_num = start;
             }
             break;
         }
         case TOK_STATE_STR:
         {
-        start_string: __attribute((unused))
             if (!next_char(toker, &c))
             {
                 toker->state = TOK_STATE_ERR;
                 res.rc = BRC_UNTERM;
-                res.line_num = toker->line_num;
+                res.col_num = start;
                 return res;
             }
             if (is_escape)
@@ -231,7 +253,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
                 {
                     toker->state = TOK_STATE_ERR;
                     res.rc = BRC_BADESC;
-                    res.line_num = toker->line_num;
+                    res.col_num = toker->col_num;
                     return res;
                 }
                 tok->str_val.data[str_pos++] = esc;
@@ -245,17 +267,19 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
             else if (c == '"')
             {
                 toker->state = TOK_STATE_WS;
+                res.col_num = start;
             }
             else if (isprintc(c))
             {
                 tok->str_val.data[str_pos++] = c;
                 tok->str_val.len++;
+                res.col_num = toker->col_num;
             }
             else
             {
                 toker->state = TOK_STATE_ERR;
                 res.rc = BRC_UNEXCHAR;
-                res.line_num = toker->line_num;
+                res.col_num = toker->col_num;
                 return res;
             }
             break;
@@ -266,8 +290,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
         }
         }
     }
-    
+
     res.rc = BRC_SUCCESS;
-    res.line_num = toker->line_num;
     return res;
 }
