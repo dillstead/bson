@@ -9,6 +9,7 @@ struct arena
 {
     byte *beg;
     byte *end;
+    byte *commit;
 };
 
 void *alloc(struct arena *arena, size sz, size align, size count);

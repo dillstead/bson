@@ -7,10 +7,9 @@
 #include "arena.h"
 #include "test_types.h"
 
-static bool test_arenas(struct arena *arena, struct arena *low_arena)
+static bool setup_arenas(struct arena *arena, struct arena *low_arena)
 {
-    if (new_arena(low_arena, 0) || new_arena(low_arena, -1)
-        || !new_arena(low_arena, 1) || !new_arena(arena, 1 << 12))
+    if (!new_arena(low_arena, 1) || !new_arena(arena, 1 << 12))
     {
         fprintf(stderr, "type test arenas: failed\n");
         return false;
@@ -185,7 +184,7 @@ bool test_types(void)
     struct arena low_arena;
     struct arena arena;
 
-    return test_arenas(&arena, &low_arena) && test_no_mem(low_arena)
+    return setup_arenas(&arena, &low_arena) && test_no_mem(low_arena)
         && test_int(arena) && test_str(arena) && test_list(low_arena, arena)
         && test_obj(low_arena, arena);
 }

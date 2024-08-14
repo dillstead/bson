@@ -19,7 +19,9 @@ enum brc
     BRC_OUTRANGE,
     BRC_UNTERM,
     BRC_BADESC,
-    BRC_UNEXCHAR
+    BRC_BADCHAR,
+    BRC_EOS,
+    BRC_SYNERR
 };
 
 struct arena;

@@ -164,7 +164,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     if (!isprintc(c))
     {
         toker->state = TOK_STATE_ERR;
-        res.rc = BRC_UNEXCHAR;
+        res.rc = BRC_BADCHAR;
         return res;
     }
 
@@ -184,7 +184,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
             if (!peek_char(toker, &c) || !isdigitc(c))
             {
                 toker->state = TOK_STATE_ERR;
-                res.rc = BRC_UNEXCHAR;
+                res.rc = isprintc(c) ? BRC_SYNERR : BRC_BADCHAR;
                 return res;
             }
             next_char(toker, &c);
@@ -204,7 +204,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     else
     {
         toker->state = TOK_STATE_ERR;
-        res.rc = BRC_UNEXCHAR;
+        res.rc = isprintc(c) ? BRC_SYNERR: BRC_BADCHAR;
         return res;
     }
 
@@ -278,7 +278,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
             else
             {
                 toker->state = TOK_STATE_ERR;
-                res.rc = BRC_UNEXCHAR;
+                res.rc = BRC_BADCHAR;
                 res.col_num = toker->col_num;
                 return res;
             }

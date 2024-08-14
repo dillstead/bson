@@ -9,7 +9,8 @@ BUILDDIR  := build
 SRC       := str.c toker.c arena.c bson_int.c bson_str.c bson_list.c \
 	bson_obj.c bson.c 
 OBJ       := $(SRC:%.c=$(BUILDDIR)/%.o)
-TST_SRC   := test.c test_tok.c test_types.c
+TST_SRC   := test.c test_utils.c test_tok.c test_types.c test_parse.c \
+	test_arena.c
 TST_OBJ   := $(TST_SRC:%.c=$(BUILDDIR)/%.o)
 CFLAGS    := -std=c11 -Wall -Wextra -I./include
 LDFLAGS   := -L.
