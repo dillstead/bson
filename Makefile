@@ -1,17 +1,19 @@
 NDEBUG ?= 0
 NASAN ?= 0
 
-CC        := gcc
 NAME      := bson
-LIB       := lib$(NAME).so
+SLIB      := lib$(NAME).so
+DLIB      := lib$(NAME).a
 TST       := $(NAME)_test
-BUILDDIR  := build
 SRC       := str.c toker.c arena.c bson_int.c bson_str.c bson_list.c \
 	bson_obj.c bson.c 
-OBJ       := $(SRC:%.c=$(BUILDDIR)/%.o)
 TST_SRC   := test.c test_utils.c test_tok.c test_types.c test_parse.c \
 	test_arena.c
-TST_OBJ   := $(TST_SRC:%.c=$(BUILDDIR)/%.o)
+SDIR      := static
+SOBJ      := $(SRC:%.c=$(SDIR)/%.o)
+TST_OBJ   := $(TST_SRC:%.c=$(SDIR)/%.o)
+DDIR      := dynamic
+DOBJ      := $(SRC:%.c=$(DDIR)/%.o)
 CFLAGS    := -std=c11 -Wall -Wextra -I./include
 LDFLAGS   := -L.
 ifeq ($(NDEBUG), 0)
@@ -27,28 +29,35 @@ endif
 
 .PHONY: all clean
 
-all: $(LIB) $(TST)
+all: $(SLIB) $(DLIB) $(TST)
 
-$(LIB): CFLAGS += -fPIC
-$(LIB): LDFLAGS += -shared
-$(LIB): $(OBJ)
+$(SLIB): $(SOBJ)
+	$(AR) $(ARFLAGS) $@ $^
+
+$(DLIB): CFLAGS += -fPIC
+$(DLIB): LDFLAGS += -shared
+$(DLIB): $(DOBJ)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
-$(BUILDDIR)/%.o: %.c | $(BUILDDIR)
+$(SDIR)/%.o: %.c | $(SDIR)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(BUILDDIR):
+$(DDIR)/%.o: %.c | $(DDIR)
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(SDIR) $(DDIR):
 	@mkdir $@
 
-$(TST): LDLIBS += -lbson
-$(TST): $(LIB) $(TST_OBJ) 
+$(TST): LDLIBS += -l:$(SLIB)
+$(TST): $(SLIB) $(TST_OBJ) 
 	$(CC) $(TST_OBJ) $(LDFLAGS) -o $@ $(LDLIBS)
 
 rtests: $(TST)
-	LD_LIBRARY_PATH=./ ./bson_test
+	./bson_test
 
 dtests: $(TST)
-	LD_LIBRARY_PATH=./ ASAN_OPTIONS=detect_leaks=0 gdb ./bson_test
+	ASAN_OPTIONS=detect_leaks=0 gdb ./bson_test
 
 clean:
-	rm -r $(BUILDDIR) $(TST) $(LIB)
+	rm -f -r $(SDIR) $(DDIR) $(SLIB) $(DLIB) $(TST) $(TST_OBJ)
+
