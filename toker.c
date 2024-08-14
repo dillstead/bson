@@ -144,7 +144,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
     i64 int_val = 0;
     char c = '\0';
     bool is_escape = false;
-    int start;
+    int start = 0;
     size str_pos;
     struct bson_res res = { BRC_BADSTATE, 0, 0 };
 
