@@ -36,6 +36,13 @@ struct str
     int len;
 };
 
+struct arena
+{
+    char *beg;
+    char *end;
+    char *commit;
+};
+
 struct bson_type
 {
     enum btype type;

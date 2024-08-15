@@ -5,13 +5,16 @@ NAME      := bson
 SLIB      := lib$(NAME).so
 DLIB      := lib$(NAME).a
 TST       := $(NAME)_test
+EXAMPLE   := $(NAME)_example
 SRC       := str.c toker.c arena.c bson_int.c bson_str.c bson_list.c \
 	bson_obj.c bson.c 
 TST_SRC   := test.c test_utils.c test_tok.c test_types.c test_parse.c \
 	test_arena.c
+EXAMPLE_SRC := example.c
 SDIR      := static
 SOBJ      := $(SRC:%.c=$(SDIR)/%.o)
 TST_OBJ   := $(TST_SRC:%.c=$(SDIR)/%.o)
+EXAMPLE_OBJ := $(EXAMPLE_SRC:%.c=$(SDIR)/%.o)
 DDIR      := dynamic
 DOBJ      := $(SRC:%.c=$(DDIR)/%.o)
 CFLAGS    := -std=c11 -Wall -Wextra -I./include
@@ -29,7 +32,8 @@ endif
 
 .PHONY: all clean
 
-all: $(SLIB) $(DLIB) $(TST)
+all: $(SLIB) $(DLIB) $(TST) $(EXAMPLE)
+
 
 $(SLIB): $(SOBJ)
 	$(AR) $(ARFLAGS) $@ $^
@@ -51,6 +55,10 @@ $(SDIR) $(DDIR):
 $(TST): LDLIBS += -l:$(SLIB)
 $(TST): $(SLIB) $(TST_OBJ) 
 	$(CC) $(TST_OBJ) $(LDFLAGS) -o $@ $(LDLIBS)
+
+$(EXAMPLE): LDLIBS += -l:$(SLIB)
+$(EXAMPLE): $(SLIB) $(EXAMPLE_OBJ) 
+	$(CC) $(EXAMPLE_OBJ) $(LDFLAGS) -o $@ $(LDLIBS)
 
 rtests: $(TST)
 	./bson_test
