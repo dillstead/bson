@@ -93,5 +93,5 @@ $ ./bson_example test.bson
 Syntax error row 1 col 9
 ```
 
-The public API can be found in ```bson.h``` and is simple to use.  '''example.c``` exercises all of the API functions and can be used as a reference.
+The public API can be found in ```bson.h``` and is simple to use.  ```example.c``` exercises all of the API functions and can be used as a reference.
 
