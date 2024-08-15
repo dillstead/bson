@@ -1,0 +1,65 @@
+bson
+    element
+
+element
+    ws value ws
+
+value
+    object
+    array
+    string
+    integer
+
+object
+    '{' ws '}'
+    '{' members '}'
+
+members
+    member
+    member ',' members
+
+member
+    ws string ws ':' element
+
+array
+    '[' ws ']'
+    '[' elements ']'
+
+elements
+    element
+    element ',' elements
+
+element
+    ws value ws
+
+string
+    '"' characters '"'
+
+characters
+    0x20 ... 0x7E
+    '\' escape
+
+escape
+    '\'
+    'n'
+    '"'
+    
+integer
+    digits
+    '-' digits
+
+digits
+    digit
+    digit digits
+    
+digits
+    '0' ... '9'    
+
+ws
+    ""
+    0x09
+    0x0A
+    0x0B
+    0x0C
+    0x0D
+    0x20
