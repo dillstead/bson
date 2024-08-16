@@ -1,7 +1,7 @@
 #include <limits.h>
 #include "toker.h"
 
-static bool symbol_set[128] = {
+static bool symbol_set[256] = {
     ['{'] = true,
     ['}'] = true,
     ['['] = true,
@@ -10,7 +10,7 @@ static bool symbol_set[128] = {
     [','] = true
 };
 
-static char escape_set[128] = {
+static char escape_set[256] = {
     ['\\'] = '\\',
     ['n'] = '\n',
     ['"'] = '"'
@@ -168,7 +168,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
         return res;
     }
 
-    if (symbol_set[(int) c])
+    if (symbol_set[c & 0xFF])
     {
         tok->type = TOK_TYPE_SYM;
         tok->str_val.data = toker->str.data + toker->pos - 1;
@@ -248,7 +248,7 @@ struct bson_res next_tok(struct toker *toker, struct tok *tok)
             }
             if (is_escape)
             {
-                char esc = escape_set[(int) c];
+                char esc = escape_set[c & 0xFF];
                 if (!esc)
                 {
                     toker->state = TOK_STATE_ERR;
