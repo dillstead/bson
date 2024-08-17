@@ -1,7 +1,7 @@
 #ifndef BSON_INT_H
 #define BSON_INT_H
 
-#include "bson.h"
+#include "./include/bson.h"
 
 struct bson_int
 {

@@ -2,7 +2,7 @@
 #define BSON_LIST_H
 
 #include "types.h"
-#include "bson.h"
+#include "./include/bson.h"
 
 struct bson_list
 {

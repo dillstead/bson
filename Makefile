@@ -17,7 +17,7 @@ TST_OBJ   := $(TST_SRC:%.c=$(SDIR)/%.o)
 EXAMPLE_OBJ := $(EXAMPLE_SRC:%.c=$(SDIR)/%.o)
 DDIR      := dynamic
 DOBJ      := $(SRC:%.c=$(DDIR)/%.o)
-CFLAGS    := -std=c11 -Wall -Wextra -I./include
+CFLAGS    := -std=c11 -Wall -Wextra
 LDFLAGS   := -L.
 ifeq ($(NDEBUG), 0)
 CFLAGS    += -Wno-error=unused-parameter -Wno-error=unused-function -Wno-error=unused-variable -Wconversion -Wno-error=sign-conversion -fsanitize=undefined -g3

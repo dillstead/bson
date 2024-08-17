@@ -21,7 +21,8 @@ enum brc
     BRC_BADESC,
     BRC_BADCHAR,
     BRC_EOS,
-    BRC_SYNERR
+    BRC_SYNERR,
+    BRC_TOODEEP
 };
 
 struct arena;
@@ -40,7 +41,7 @@ struct arena
 {
     char *beg;
     char *end;
-    char *commit;
+    char **commit;
 };
 
 struct bson_type

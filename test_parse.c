@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "arena.h"
 #include "str.h"
-#include "bson.h"
+#include "./include/bson.h"
 #include "bson_int.h"
 #include "bson_str.h"
 #include "test_utils.h"
@@ -10,6 +10,8 @@
 #define LOG_RES(r)       fprintf(stderr, "%s %d %d", rc_to_str((r).rc), (r).line_num, (r).col_num)
 #define APPEND_STR(b, s) append(b, s.data, s.len)
 #define MEMBUF(buf, cap) { buf, cap, 0, 0 }
+
+extern int set_max_depth(int);
 
 struct buf
 {
@@ -161,7 +163,7 @@ static bool test_no_mem(void)
     struct bson_obj *obj;
     struct arena arena;
     
-    for (sz = 1; sz < 361; sz++)
+    for (sz = 1; sz < 353; sz++)
     {
         if (!new_arena(&arena, sz))
         {
@@ -174,7 +176,42 @@ static bool test_no_mem(void)
             break;
         }
     }
-    return res.rc == BRC_SUCCESS && sz == 360;
+    if (res.rc != BRC_SUCCESS || sz != 352)
+    {
+        fprintf(stderr, "parse test no_mem: failed\n");
+        return false;
+    }
+    return true;
+}
+
+static bool test_max_depth(void)
+{
+    struct bson_res res;
+    struct bson_obj *obj;
+    struct arena arena;
+
+    if (!new_arena(&arena, 1024))
+    {
+        fprintf(stderr, "parse test: out of memory\n");
+        return false;
+    }
+    
+    res = bson_parse(&arena, str("{\"a\": {\"b\":{}}}"), &obj);
+    if (res.rc != BRC_SUCCESS)
+    {
+        fprintf(stderr, "parse test max_depth: failed\n");
+        return false;
+    }
+    set_max_depth(2);
+    res = bson_parse(&arena, str("{\"a\": {\"b\":{}}}"), &obj);
+    if (res.rc != BRC_TOODEEP)
+    {
+        fprintf(stderr, "parse test max_depth: failed\n");
+        return false;
+    }
+    set_max_depth(100);
+    return true;
+
 }
 
 bool test_parse(void)
@@ -246,7 +283,8 @@ bool test_parse(void)
         {"parse test 63", str("{\"a\":[\"b\177\""),       {BRC_BADCHAR, 1, 9 }, false},
         {"parse test 64", str("{\"a\":[\"b\\t\""),        {BRC_BADESC,  1, 10}, false},
         {"out of memory", str("{\"a\":[{\"b\":1}]}"),     {BRC_SUCCESS, 1, 15}, false},
-    };        
+    };
+    
     struct arena arena;
 
     if (!new_arena(&arena, 1 << 14))
@@ -254,7 +292,7 @@ bool test_parse(void)
         fprintf(stderr, "parse test: out of memory\n");
         return false;
     }
-
+     
     for (int i = 0; i < countof(tests) - 1; i++)
     {
         if (!test(&arena, tests + i))
@@ -262,5 +300,5 @@ bool test_parse(void)
             return false;
         }
     }
-    return (test_no_mem());
+    return (test_no_mem() && test_max_depth());
 }

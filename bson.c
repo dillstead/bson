@@ -1,10 +1,12 @@
 #include "arena.h"
 #include "toker.h"
-#include "bson.h"
+#include "./include/bson.h"
 #include "bson_int.h"
 #include "bson_str.h"
 #include "bson_obj.h"
 #include "bson_list.h"
+
+static int max_depth = 100;
 
 struct start_tok
 {
@@ -12,7 +14,7 @@ struct start_tok
     struct bson_res res;
 };
 
-static struct bson_res parse_entity(struct arena *arena, struct toker *toker,
+static struct bson_res parse_entity(struct arena *arena, int depth, struct toker *toker,
                                     struct start_tok *start, struct bson_type **type);
     
 static bool cmp_toks(struct tok *etok, struct tok *atok)
@@ -44,7 +46,7 @@ static struct bson_res expect_sym(struct toker *toker, struct str sym)
     return res;
 }
 
-static struct bson_res parse_obj(struct arena *arena, struct toker *toker,
+static struct bson_res parse_obj(struct arena *arena, int depth, struct toker *toker,
                                  struct bson_obj **obj)
 {
     struct tok rbrace = { .type = TOK_TYPE_SYM, .str_val = str("}") };
@@ -52,6 +54,12 @@ static struct bson_res parse_obj(struct arena *arena, struct toker *toker,
     bool comma_needed = false;
     struct tok tok;
     struct bson_res res = { BRC_SUCCESS, 0, 0 };
+
+    if (depth > max_depth)
+    {
+        res.rc = BRC_TOODEEP;
+        return res;
+    }
     
     *obj = bson_obj_new(arena);
     if (!*obj)
@@ -88,7 +96,7 @@ static struct bson_res parse_obj(struct arena *arena, struct toker *toker,
                 res = expect_sym(toker, str(":"));
                 if (res.rc == BRC_SUCCESS)
                 {
-                    res = parse_entity(arena, toker, NULL, &type);
+                    res = parse_entity(arena, depth, toker, NULL, &type);
                     if (res.rc == BRC_SUCCESS)
                     {
                         if (!bson_obj_put(arena, *obj, field.str_val, type))
@@ -112,7 +120,7 @@ static struct bson_res parse_obj(struct arena *arena, struct toker *toker,
     return res;
 }
 
-static struct bson_res parse_list(struct arena *arena, struct toker *toker,
+static struct bson_res parse_list(struct arena *arena, int depth, struct toker *toker,
                                   struct bson_list **list)
 {
     struct tok rbracket = { .type = TOK_TYPE_SYM, .str_val = str("]") };
@@ -121,6 +129,12 @@ static struct bson_res parse_list(struct arena *arena, struct toker *toker,
     struct tok tok;
     struct bson_type *type;
     struct bson_res res = { BRC_SUCCESS, 0, 0 };
+
+    if (depth > max_depth)
+    {
+        res.rc = BRC_TOODEEP;
+        return res;
+    }
     
     *list = bson_list_new(arena);
     if (!*list)
@@ -151,7 +165,7 @@ static struct bson_res parse_list(struct arena *arena, struct toker *toker,
             }
             else if (!comma_needed)
             {
-                res = parse_entity(arena, toker, &(struct start_tok) {tok, res}, &type);
+                res = parse_entity(arena, depth, toker, &(struct start_tok) {tok, res}, &type);
                 if (res.rc == BRC_SUCCESS)
                 {
                     if (!bson_list_push(arena, *list, type))
@@ -174,7 +188,7 @@ static struct bson_res parse_list(struct arena *arena, struct toker *toker,
     return res;
 }
 
-static struct bson_res parse_entity(struct arena *arena, struct toker *toker,
+static struct bson_res parse_entity(struct arena *arena, int depth, struct toker *toker,
                                     struct start_tok *start, struct bson_type **type)
 {
     struct tok tok;
@@ -221,11 +235,11 @@ static struct bson_res parse_entity(struct arena *arena, struct toker *toker,
 
         if (cmp_toks(&lbrace, &tok))
         {
-            res = parse_obj(arena, toker, (struct bson_obj **) type);
+            res = parse_obj(arena, ++depth, toker, (struct bson_obj **) type);
         }
         else if (cmp_toks(&lbracket, &tok))
         {
-            res = parse_list(arena, toker, (struct bson_list **) type);
+            res = parse_list(arena, ++depth, toker, (struct bson_list **) type);
         }
         else
         {
@@ -237,6 +251,11 @@ static struct bson_res parse_entity(struct arena *arena, struct toker *toker,
         res.rc = BRC_SYNERR;
     }
     return res;
+}
+
+void set_max_depth(int depth)
+{
+    max_depth = depth;
 }
 
 struct bson_res bson_parse(struct arena *arena, struct str str,
@@ -265,7 +284,7 @@ struct bson_res bson_parse(struct arena *arena, struct str str,
     res = expect_sym(&toker, str("{"));
     if (res.rc == BRC_SUCCESS)
     {
-        res = parse_obj(arena, &toker, obj);
+        res = parse_obj(arena, 1, &toker, obj);
         if (res.rc == BRC_SUCCESS && has_next_tok(&toker))
         {
             res = next_tok(&toker, &(struct tok) { 0 });

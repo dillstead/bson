@@ -3,7 +3,7 @@
 
 #include <string.h>
 #include "types.h"
-#include "bson.h"
+#include "./include/bson.h"
 
 #define str(s) (struct str) {(char *) s, (int) lengthof(s)}
 

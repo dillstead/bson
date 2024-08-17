@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "bson.h"
+#include "./include/bson.h"
 
 #define APPEND_STR(b, s) append(b, s.data, s.len)
 #define MEMBUF(buf, cap) { buf, cap, 0, 0 }
@@ -56,6 +56,10 @@ static const char *rc_to_str(enum brc rc)
     case BRC_SYNERR:
     {
         return "Syntax error";
+    }
+    case BRC_TOODEEP:
+    {
+        return "maximun nesting exceeded";
     }
     default:
     {

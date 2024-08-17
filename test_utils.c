@@ -40,6 +40,10 @@ const char *rc_to_str(enum brc rc)
     {
         return "syntax error";
     }
+    case BRC_TOODEEP:
+    {
+        return "maximun nesting exceeded";
+    }
     default:
     {
         return "unknown";

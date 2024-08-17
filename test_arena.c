@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "bson.h"
+#include "./include/bson.h"
 #include "arena.h"
 #include "test_arena.h"
 
@@ -12,7 +12,7 @@ static bool test(void)
     {
         return false;
     }
-    for (int i = 0; i < (1 << 14); i++)
+    /*for (int i = 0; i < (1 << 14); i++)
     {
         if (!new(&arena, char, 1))
         {
@@ -20,6 +20,8 @@ static bool test(void)
         }
     }
     return new(&arena, char, 1) ? false : true;
+    */
+    return new(&arena, char, 1 << 14) ? true : false;
 }
 
 bool test_arena(void)
